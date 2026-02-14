@@ -42,7 +42,7 @@ story_location: C:\Users\Marcel\Documents\Cursor\FrigoFuteV2\_bmad-output\implem
 development_status:
   # Epic 0: Initial App Setup for First User
   epic-0: in-progress
-  0-1-initialize-flutter-project-with-feature-first-structure: ready-for-dev
+  0-1-initialize-flutter-project-with-feature-first-structure: review
   0-2-configure-firebase-services-integration: backlog
   0-3-set-up-hive-local-database-for-offline-storage: backlog
   0-4-implement-riverpod-state-management-foundation: backlog

@@ -1,6 +1,6 @@
 # Story 0.1: Initialize Flutter Project with Feature-First Structure
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,38 +18,38 @@ afin que je puisse bénéficier d'une application stable, performante et mainten
 
 ## Tasks / Subtasks
 
-- [ ] Initialiser le projet Flutter avec org identifier com.frigofute (AC: #1, #2, #3)
-  - [ ] Exécuter `flutter create --org com.frigofute --platforms ios,android frigofute_v2`
-  - [ ] Vérifier que Flutter >= 3.32 (actuellement 3.41 stable en 2026)
-  - [ ] Vérifier que Dart >= 3.5+
+- [x] Initialiser le projet Flutter avec org identifier com.frigofute (AC: #1, #2, #3)
+  - [x] Exécuter `flutter create --org com.frigofute --platforms ios,android frigofute_v2`
+  - [x] Vérifier que Flutter >= 3.32 (actuellement 3.32.6 stable)
+  - [x] Vérifier que Dart >= 3.5+ (actuellement 3.8.1)
 
-- [ ] Créer la structure Feature-First complète (AC: #4)
-  - [ ] Créer les 8 couches transversales dans `lib/core/`
-  - [ ] Créer les placeholders pour les 14 modules dans `lib/features/`
-  - [ ] Créer la structure Clean Architecture (domain/data/presentation) pour chaque module
-  - [ ] Créer la structure Atomic Design dans `lib/core/shared/widgets/`
+- [x] Créer la structure Feature-First complète (AC: #4)
+  - [x] Créer les 8 couches transversales dans `lib/core/`
+  - [x] Créer les placeholders pour les 14 modules dans `lib/features/`
+  - [x] Créer la structure Clean Architecture (domain/data/presentation) pour chaque module
+  - [x] Créer la structure Atomic Design dans `lib/core/shared/widgets/`
 
-- [ ] Configurer les fichiers de base (AC: #4)
-  - [ ] Configurer `pubspec.yaml` avec les dépendances de base
-  - [ ] Configurer `analysis_options.yaml` avec règles de linting strictes
-  - [ ] Configurer `.gitignore` pour exclure fichiers sensibles
-  - [ ] Créer templates `.env.example` pour variables d'environnement
+- [x] Configurer les fichiers de base (AC: #4)
+  - [x] Configurer `pubspec.yaml` avec les dépendances de base
+  - [x] Configurer `analysis_options.yaml` avec règles de linting strictes
+  - [x] Configurer `.gitignore` pour exclure fichiers sensibles
+  - [x] Créer templates `.env.example` pour variables d'environnement
 
-- [ ] Créer la structure de tests (AC: #5)
-  - [ ] Créer structure mirror dans `test/`
-  - [ ] Créer `test/test_helpers/` pour mocks et factories
-  - [ ] Créer `test/integration_test/` pour tests E2E
+- [x] Créer la structure de tests (AC: #5)
+  - [x] Créer structure mirror dans `test/`
+  - [x] Créer `test/test_helpers/` pour mocks et factories
+  - [x] Créer `test/integration_test/` pour tests E2E
 
-- [ ] Configurer les assets (AC: #4)
-  - [ ] Créer structure `assets/{images,fonts,translations}/`
-  - [ ] Ajouter références assets dans `pubspec.yaml`
+- [x] Configurer les assets (AC: #4)
+  - [x] Créer structure `assets/{images,fonts,translations}/`
+  - [x] Ajouter références assets dans `pubspec.yaml`
 
-- [ ] Vérifier la compilation (AC: #5)
-  - [ ] `flutter pub get` sans erreurs
-  - [ ] `flutter analyze` retourne 0 issues
-  - [ ] `flutter test` passe (même si aucun test pour l'instant)
-  - [ ] `flutter build apk --debug` compile pour Android
-  - [ ] `flutter build ios --debug --no-codesign` compile pour iOS
+- [x] Vérifier la compilation (AC: #5)
+  - [x] `flutter pub get` sans erreurs
+  - [x] `flutter analyze` retourne 0 issues
+  - [x] `flutter test` passe (1 test passed)
+  - [x] `flutter build apk --debug` compile pour Android
+  - [x] `flutter build ios` - Non testable sur Windows (nécessite macOS)
 
 ## Dev Notes
 
@@ -414,11 +414,70 @@ N/A - Première story du projet
 
 ### Completion Notes List
 
-*À remplir par le dev agent après implémentation*
+**Story 0.1 - Initialisation Complète - 2026-02-14**
+
+✅ **Projet Flutter initialisé avec succès**
+- Organisation ID: com.frigofute
+- Package name: frigofute_v2
+- Plateformes: iOS + Android
+- Flutter 3.32.6, Dart 3.8.1
+
+✅ **Structure Feature-First créée**
+- 10 couches core/ (auth, data_sync, networking, storage, feature_flags, monitoring, compliance, routing, theme, shared)
+- 14 modules features/ avec Clean Architecture complète
+- Atomic Design: widgets/{atoms,molecules,organisms}
+
+✅ **Dépendances installées** (99 packages)
+- Firebase suite (core, auth, firestore, storage, analytics, crashlytics, performance, remote_config)
+- Riverpod 2.6.1 (state management)
+- Hive Community Edition 2.8.0 (local storage)
+- GoRouter 17.0.0 (routing)
+- Dio 5.9.1 + retry (networking)
+- Dartz, Freezed, JSON serialization
+- Testing: mockito, mocktail
+
+✅ **Configuration stricte**
+- analysis_options.yaml: Linting strict (prefer_const, prefer_final, no implicit casts/dynamic)
+- .gitignore: Exclusions critiques (.env, Firebase config)
+- .env.example + .env.dev/staging/prod créés
+
+✅ **Compilation validée**
+- flutter analyze: No issues found
+- flutter test: All tests passed (1/1)
+- flutter build apk: Success (build\app\outputs\flutter-apk\app-debug.apk)
+- Android: minSdk 23, NDK 27.0.12077973 (requis Firebase)
+
+⚠️ **Note iOS**: Compilation iOS non testée (Windows). À valider sur macOS.
 
 ### File List
 
-*À remplir par le dev agent après implémentation*
+**Configuration:**
+- pubspec.yaml (99 dépendances)
+- analysis_options.yaml
+- .gitignore
+- .env.example
+- .env.dev
+- .env.staging
+- .env.prod
+
+**Android:**
+- android/app/build.gradle.kts (modifié: minSdk 23, NDK 27.0.12077973)
+
+**Structure lib/:**
+- lib/main.dart (corrigé: paramètres requis avant optionnels)
+- lib/core/{auth,data_sync,networking,storage,feature_flags,monitoring,compliance,routing,theme}/
+- lib/core/shared/{utils,extensions,constants,exceptions,widgets/{atoms,molecules,organisms}}/
+- lib/features/{inventory,ocr_scan,notifications,dashboard,auth_profile,recipes,nutrition_tracking,nutrition_profiles,meal_planning,ai_coach,gamification,shopping_list,family_sharing,price_comparator}/
+  - Chaque feature: domain/{entities,repositories,usecases}, data/{models,datasources,repositories}, presentation/{providers,screens,widgets}
+
+**Structure test/:**
+- test/{core,features,integration_test,test_helpers}/
+- test/widget_test.dart (existant, 1 test passing)
+
+**Structure assets/:**
+- assets/images/{onboarding,icons,illustrations}/
+- assets/fonts/
+- assets/translations/
 
 ---
 
