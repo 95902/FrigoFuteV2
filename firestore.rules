@@ -1,0 +1,252 @@
+rules_version = '2';
+
+// Firestore Security Rules for FrigoFuteV2
+// Story 0.9 Phase 7: Version-based conflict detection and user data isolation
+// Story 0.10 Phase 3: Custom claims validation and health data protection
+//
+// Key Features:
+// - User data isolation (users can only access their own data)
+// - Version-based optimistic concurrency control for inventory_items
+// - Custom claims validation (health_data_consent, is_premium)
+// - Health data protection (RGPD Article 9 compliance)
+// - Input validation and XSS prevention
+// - Read-only access to shared collections (recipes, products_catalog)
+// - Quota management (read-only for users, write-only for Cloud Functions)
+//
+// Deployment:
+// firebase deploy --only firestore:rules
+//
+// Testing:
+// firebase emulators:start --only firestore
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user has health data consent (custom claim)
+    // Set via Cloud Functions: admin.auth().setCustomUserClaims(uid, {health_data_consent: true})
+    function hasHealthConsent() {
+      return isAuthenticated() && request.auth.token.health_data_consent == true;
+    }
+
+    // Check if user is premium subscriber (custom claim)
+    function isPremium() {
+      return isAuthenticated() && request.auth.token.is_premium == true;
+    }
+
+    // Check if version incremented correctly
+    function validVersionIncrement() {
+      return request.resource.data.version == resource.data.version + 1;
+    }
+
+    // Check if required fields exist
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate string length (prevent XSS and data bloat)
+    function validStringLength(field, maxLength) {
+      return request.resource.data[field] is string
+             && request.resource.data[field].size() <= maxLength;
+    }
+
+    // Validate product name (XSS prevention)
+    function validProductName() {
+      return validStringLength('name', 200)
+             && !request.resource.data.name.matches('.*<script.*')
+             && !request.resource.data.name.matches('.*javascript:.*');
+    }
+
+    // ============================================================================
+    // USER-SCOPED COLLECTIONS
+    // ============================================================================
+    // All user data is scoped under users/{userId}/
+    // Users can only read/write their own data
+
+    match /users/{userId} {
+      // User document itself (profile, settings, etc.)
+      allow read, write: if isOwner(userId);
+
+      // ------------------------------------------------------------------------
+      // INVENTORY ITEMS - With version-based conflict detection
+      // ------------------------------------------------------------------------
+      match /inventory_items/{itemId} {
+        // Read: User can read their own inventory
+        allow read: if isOwner(userId);
+
+        // Create: Initial version must be 1, with input validation
+        // Story 0.10: Added XSS prevention for product name
+        allow create: if isOwner(userId)
+                      && request.resource.data.version == 1
+                      && hasRequiredFields(['id', 'name', 'category', 'expirationDate', 'version', 'updatedAt'])
+                      && validProductName()
+                      && request.resource.data.category is string
+                      && request.resource.data.expirationDate is timestamp;
+
+        // Update: Version must increment by exactly 1 (optimistic concurrency)
+        // Story 0.10: Added input validation
+        allow update: if isOwner(userId)
+                      && validVersionIncrement()
+                      && hasRequiredFields(['id', 'name', 'category', 'expirationDate', 'version', 'updatedAt'])
+                      && validProductName();
+
+        // Delete: No version check needed (delete wins in conflicts)
+        allow delete: if isOwner(userId);
+      }
+
+      // ------------------------------------------------------------------------
+      // NUTRITION TRACKING - Health data (RGPD Article 9)
+      // Story 0.10: Requires health_data_consent custom claim
+      // ------------------------------------------------------------------------
+      match /nutrition_tracking/{entryId} {
+        allow read, write: if isOwner(userId) && hasHealthConsent();
+
+        // Consent withdrawal → allow delete even without consent
+        // Enables RGPD right to erasure
+        allow delete: if isOwner(userId)
+                      && request.auth.token.health_data_consent_withdrawal_approved == true;
+      }
+
+      // ------------------------------------------------------------------------
+      // MEAL PLANS
+      // ------------------------------------------------------------------------
+      match /meal_plans/{planId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+                      && hasRequiredFields(['startDate', 'endDate', 'updatedAt']);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // ------------------------------------------------------------------------
+      // HEALTH PROFILES - Sensitive medical data (RGPD Article 9)
+      // Story 0.10: Requires health_data_consent custom claim
+      // ------------------------------------------------------------------------
+      match /health_profiles/{profileId} {
+        allow read, write: if isOwner(userId) && hasHealthConsent();
+      }
+
+      // ------------------------------------------------------------------------
+      // HEALTH PROFILE (subcollection) - Story 1.6
+      // Path: users/{userId}/healthProfile/current
+      // Requires: authenticated owner + health data consent
+      // ------------------------------------------------------------------------
+      match /healthProfile/current {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && hasHealthConsent();
+      }
+
+      // Weight history subcollection - Story 1.6
+      match /healthProfile/current/weightHistory/{entryId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && hasHealthConsent();
+        // Right to erasure (RGPD)
+        allow delete: if isOwner(userId);
+      }
+
+      // ------------------------------------------------------------------------
+      // NUTRITION DATA - Detailed nutrition logs (RGPD Article 9)
+      // Story 0.10: Requires health_data_consent custom claim
+      // ------------------------------------------------------------------------
+      match /nutrition_data/{dataId} {
+        allow read, write: if isOwner(userId) && hasHealthConsent();
+      }
+
+      // ------------------------------------------------------------------------
+      // USER SETTINGS
+      // ------------------------------------------------------------------------
+      match /settings/{settingId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // ------------------------------------------------------------------------
+      // QUOTA COUNTERS - API usage tracking
+      // Story 0.10: Read-only for users, write-only for Cloud Functions
+      // ------------------------------------------------------------------------
+      match /quota/{apiName} {
+        allow read: if isOwner(userId);
+        allow write: if false; // Only Cloud Functions can write
+      }
+    }
+
+    // ============================================================================
+    // SHARED READ-ONLY COLLECTIONS
+    // ============================================================================
+    // Story 0.10: Shared collections managed by Cloud Functions
+
+    // ------------------------------------------------------------------------
+    // SHARED RECIPES DATABASE - 10,000+ recipes
+    // ------------------------------------------------------------------------
+    match /shared/recipes/{recipeId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Cloud Functions only
+    }
+
+    match /shared/products_catalog/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Cloud Functions only
+    }
+
+    // ============================================================================
+    // SHARED INVENTORIES - Family/Colocation Mode
+    // ============================================================================
+    // Story 0.10: Multi-user shared inventories
+
+    match /shared_inventories/{sharedId} {
+      // Read: User must be a member of the shared inventory
+      allow read: if isAuthenticated()
+                  && request.auth.uid in resource.data.members;
+
+      // Write: Only the owner can modify
+      allow write: if isAuthenticated()
+                   && request.auth.uid in resource.data.members
+                   && request.auth.uid == resource.data.owner;
+    }
+
+    // ============================================================================
+    // PREMIUM FEATURES & FEATURE FLAGS
+    // ============================================================================
+    // Story 0.10: Feature flags with premium access control
+
+    match /feature_flags/{featureId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Remote Config + Cloud Functions only
+    }
+
+    // ============================================================================
+    // LEGACY GLOBAL COLLECTIONS (Deprecated - use /shared/)
+    // ============================================================================
+    // Kept for backward compatibility, redirect to /shared/ in client code
+
+    match /recipes/{recipeId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /products_catalog/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ============================================================================
+    // DENY ALL OTHER PATHS
+    // ============================================================================
+    // Story 0.10: Fail-secure - deny access to any undeclared collections
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
