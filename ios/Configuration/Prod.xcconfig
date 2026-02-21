@@ -1,0 +1,31 @@
+// Production Configuration for FrigoFuteV2
+// Story 0.6: iOS Build Flavors
+
+#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+#include "Generated.xcconfig"
+
+// Bundle Identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.frigofute.frigofute-v2
+
+// App Name
+PRODUCT_NAME = FrigoFute
+DISPLAY_NAME = FrigoFute
+
+// Firebase Config Path
+FIREBASE_PLIST_PATH = $(SRCROOT)/Runner/Firebase/prod/GoogleService-Info.plist
+
+// Code Signing (App Store)
+CODE_SIGN_STYLE = Manual
+PROVISIONING_PROFILE_SPECIFIER = match AppStore com.frigofute.frigofute-v2
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+// Build Settings
+SWIFT_VERSION = 5.0
+IPHONEOS_DEPLOYMENT_TARGET = 12.0
+SWIFT_OPTIMIZATION_LEVEL = -Osize
+ENABLE_BITCODE = NO
+
+// Obfuscation for Production
+GCC_SYMBOLS_PRIVATE_EXTERN = YES
+STRIP_INSTALLED_PRODUCT = YES
+STRIP_STYLE = non-global

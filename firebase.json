@@ -1,0 +1,41 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    }
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "frigofute-8d98b",
+          "appId": "1:1014088565344:android:2ce1a9479053ec5daeb905",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options_dev.dart": {
+          "projectId": "frigofute-8d98b",
+          "configurations": {
+            "android": "1:1014088565344:android:2ce1a9479053ec5daeb905",
+            "ios": "1:1014088565344:ios:c6ac35d661554873aeb905"
+          }
+        }
+      }
+    }
+  }
+}

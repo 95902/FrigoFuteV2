@@ -1,0 +1,4 @@
+# Appfile for iOS - FrigoFuteV2
+app_identifier("com.frigofute.frigofute-v2")
+apple_id(ENV["APPLE_ID"])
+team_id(ENV["APPLE_TEAM_ID"])

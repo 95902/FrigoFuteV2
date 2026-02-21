@@ -1,0 +1,23 @@
+// Dev Configuration for FrigoFuteV2
+// Story 0.6: iOS Build Flavors
+
+#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+#include "Generated.xcconfig"
+
+// Bundle Identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.frigofute.frigofute-v2.dev
+
+// App Name
+PRODUCT_NAME = FrigoFute DEV
+DISPLAY_NAME = FrigoFute DEV
+
+// Firebase Config Path
+FIREBASE_PLIST_PATH = $(SRCROOT)/Runner/Firebase/dev/GoogleService-Info.plist
+
+// Code Signing (Development)
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+// Build Settings
+SWIFT_VERSION = 5.0
+IPHONEOS_DEPLOYMENT_TARGET = 12.0

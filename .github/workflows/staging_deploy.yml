@@ -1,0 +1,95 @@
+name: Staging Deploy (Firebase App Distribution)
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-and-deploy-android:
+    name: Build & Deploy Android Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.6'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build APK (staging release)
+        run: flutter build apk --flavor staging --release
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID_STAGING }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_KEY_STAGING }}
+          groups: beta-testers
+          file: build/app/outputs/apk/staging/release/app-staging-release.apk
+          releaseNotes: |
+            🚀 Staging Build - ${{ github.event.head_commit.message }}
+
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Branch: develop
+
+            ⚠️ This is a BETA build for testing purposes only.
+
+  build-and-deploy-ios:
+    name: Build & Deploy iOS Staging
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.6'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build IPA (staging release)
+        run: flutter build ipa --flavor staging --release --export-options-plist=ios/ExportOptionsStaging.plist
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_IOS_APP_ID_STAGING }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_KEY_STAGING }}
+          groups: beta-testers
+          file: build/ios/ipa/frigofute_v2.ipa
+          releaseNotes: |
+            🚀 Staging Build - ${{ github.event.head_commit.message }}
+
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Branch: develop
+
+            ⚠️ This is a BETA build for testing purposes only.

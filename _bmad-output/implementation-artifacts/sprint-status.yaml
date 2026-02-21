@@ -1,0 +1,248 @@
+# generated: 2026-02-14
+# project: FrigoFuteV2
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: C:\Users\Marcel\Documents\Cursor\FrigoFuteV2\_bmad-output\implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-14
+project: FrigoFuteV2
+project_key: NOKEY
+tracking_system: file-system
+story_location: C:\Users\Marcel\Documents\Cursor\FrigoFuteV2\_bmad-output\implementation-artifacts
+
+development_status:
+  # Epic 0: Initial App Setup for First User
+  epic-0: done
+  0-1-initialize-flutter-project-with-feature-first-structure: done
+  0-2-configure-firebase-services-integration: done
+  0-3-set-up-hive-local-database-for-offline-storage: done
+  0-4-implement-riverpod-state-management-foundation: done
+  0-5-configure-gorouter-for-navigation-and-deep-linking: done
+  0-6-set-up-ci-cd-pipeline-with-quality-gates: done
+  0-6-1-boost-test-coverage-to-75-percent: done
+  0-7-implement-crash-reporting-and-performance-monitoring: done
+  0-8-configure-feature-flags-via-firebase-remote-config: done
+  0-9-implement-offline-first-sync-architecture-foundation: done
+  0-10-configure-security-foundation-and-api-keys-management: done
+  0-10-1-phase2-encryption-configuration: done
+  0-10-2-phase3-security-rules: done
+  0-10-3-phase4-input-sanitization: done
+  0-10-4-phase7-rate-limiting-quota-management: done
+  0-10-5-phase9-ci-cd-security-checks: done
+  0-10-6-phase10-documentation-review: done
+  epic-0-retrospective: optional
+
+  # Epic 1: User Authentication & Profile Management
+  epic-1: in-progress
+  1-1-create-account-with-email-and-password: review
+  1-2-login-with-email-and-password: review
+  1-3-login-with-oauth-google-sign-in: review
+  1-4-login-with-oauth-apple-sign-in: review
+  1-5-complete-adaptive-onboarding-flow: review
+  1-6-configure-personal-profile-with-physical-characteristics: review
+  1-7-set-dietary-preferences-and-allergies: ready-for-dev
+  1-8-synchronize-data-across-multiple-devices: ready-for-dev
+  1-9-export-personal-data-rgpd-portability: ready-for-dev
+  1-10-delete-account-and-all-data-permanently: ready-for-dev
+  epic-1-retrospective: optional
+
+  # Epic 2: Inventory Management
+  epic-2: in-progress
+  2-1-add-product-manually-to-inventory: ready-for-dev
+  2-2-edit-product-information-in-inventory: ready-for-dev
+  2-3-delete-product-from-inventory: ready-for-dev
+  2-4-mark-product-as-consumed: ready-for-dev
+  2-5-view-inventory-with-filters-by-category: ready-for-dev
+  2-6-view-inventory-with-filters-by-storage-location: ready-for-dev
+  2-7-view-inventory-with-filters-by-product-status: ready-for-dev
+  2-8-automatic-product-categorization-for-scanned-items: ready-for-dev
+  2-9-automatic-storage-location-assignment-for-added-products: ready-for-dev
+  2-10-track-product-status-lifecycle-fresh-expiring-expired-consumed: ready-for-dev
+  2-11-search-products-in-inventory: ready-for-dev
+  2-12-inventory-works-fully-offline: ready-for-dev
+  epic-2-retrospective: optional
+
+  # Epic 3: Expiration Alerts & Notifications
+  epic-3: in-progress
+  3-1-receive-push-notification-for-dlc-expiration-2-days-before: ready-for-dev
+  3-2-receive-push-notification-for-ddm-expiration-5-days-before: ready-for-dev
+  3-3-visual-differentiation-of-dlc-vs-ddm-alerts-in-app: ready-for-dev
+  3-4-configure-custom-alert-delay-for-dlc-products: ready-for-dev
+  3-5-configure-custom-alert-delay-for-ddm-products: ready-for-dev
+  3-6-disable-notifications-for-specific-product-categories: ready-for-dev
+  3-7-configure-quiet-hours-for-notifications: ready-for-dev
+  3-8-view-disclaimer-about-expiration-alert-responsibility: ready-for-dev
+  epic-3-retrospective: optional
+
+  # Epic 4: Dashboard & Impact Metrics
+  epic-4: in-progress
+  4-1-view-dashboard-summary-widget-with-real-time-metrics: ready-for-dev
+  4-2-view-food-waste-avoided-metric-kg-and-euro: ready-for-dev
+  4-3-view-ecological-impact-metric-co2eq-avoided: ready-for-dev
+  4-4-view-temporal-evolution-charts-for-metrics: ready-for-dev
+  4-5-view-nutritional-statistics-on-dashboard-premium: ready-for-dev
+  4-6-dashboard-widgets-load-fast-from-local-cache: ready-for-dev
+  epic-4-retrospective: optional
+
+  # Epic 5: OCR & Barcode Scanning
+  epic-5: in-progress
+  5-1-scan-product-barcode-ean-13-to-add-to-inventory: ready-for-dev
+  5-2-scan-receipt-via-ocr-to-add-multiple-products: ready-for-dev
+  5-3-ocr-dual-engine-with-automatic-fallback-google-vision-ml-kit: ready-for-dev
+  5-4-display-ocr-confidence-score-and-allow-manual-correction: ready-for-dev
+  5-5-enrich-scanned-products-with-nutritional-data-from-openfoodfacts: ready-for-dev
+  5-6-handle-ocr-failures-gracefully-with-clear-error-messages: ready-for-dev
+  5-7-ocr-optimized-for-french-grocery-receipts: ready-for-dev
+  5-8-barcode-scan-with-visual-guidance-for-correct-positioning: ready-for-dev
+  5-9-cache-openfoodfacts-data-locally-for-offline-barcode-scans: ready-for-dev
+  5-10-monitor-and-display-ocr-barcode-scan-success-rate: ready-for-dev
+  epic-5-retrospective: optional
+
+  # Epic 6: Recipe Discovery & Suggestions
+  epic-6: in-progress
+  6-1-search-recipes-based-on-current-inventory: ready-for-dev
+  6-2-filter-recipes-by-budget-cheap-moderate-expensive: ready-for-dev
+  6-3-filter-recipes-by-preparation-time: ready-for-dev
+  6-4-filter-recipes-by-difficulty-easy-medium-hard: ready-for-dev
+  6-5-filter-recipes-by-dietary-regime-vegetarian-vegan-gluten-free-etc: ready-for-dev
+  6-6-receive-recipe-suggestions-for-products-expiring-soon: ready-for-dev
+  6-7-mark-recipes-as-favorites-for-quick-access: ready-for-dev
+  6-8-view-detailed-recipe-tutorial-with-step-by-step-instructions: ready-for-dev
+  6-9-recipe-suggestions-adapt-to-nutritional-profile-premium: ready-for-dev
+  6-10-access-recipe-database-of-10000-recipes-with-fast-search: ready-for-dev
+  epic-6-retrospective: optional
+
+  # Epic 7: Nutritional Tracking
+  epic-7: in-progress
+  7-1-activate-nutrition-tracking-with-double-opt-in: ready-for-dev
+  7-2-log-daily-food-consumption-manually-with-calorie-macro-tracking: ready-for-dev
+  7-3-view-daily-nutrition-dashboard-with-macro-breakdown: ready-for-dev
+  7-4-view-weekly-and-monthly-nutrition-history: ready-for-dev
+  7-5-withdraw-consent-and-delete-all-nutrition-data: ready-for-dev
+  7-6-view-disclaimer-about-non-medical-device-status: ready-for-dev
+  7-7-encrypt-nutrition-data-at-rest-and-in-transit: ready-for-dev
+  7-8-view-aggregated-nutritional-statistics-on-dashboard: ready-for-dev
+  epic-7-retrospective: optional
+
+  # Epic 8: Nutrition Profiles & Calculations
+  epic-8: backlog
+  8-1-select-nutritional-profile-from-12-predefined-options: backlog
+  8-2-calculate-tdee-total-daily-energy-expenditure-automatically: backlog
+  8-3-calculate-bmr-basal-metabolic-rate-automatically: backlog
+  8-4-set-macro-targets-based-on-nutritional-profile: backlog
+  8-5-view-disclaimer-for-medical-profiles-diabetic-heart-health: backlog
+  8-6-update-dietary-preferences-and-allergies: backlog
+  epic-8-retrospective: optional
+
+  # Epic 9: Meal Planning with AI
+  epic-9: backlog
+  9-1-generate-weekly-meal-plan-via-gemini-ai: backlog
+  9-2-meal-plan-respects-nutritional-constraints-macros-and-calories: backlog
+  9-3-meal-plan-optimizes-use-of-existing-inventory-anti-waste: backlog
+  9-4-specify-meal-planning-constraints-time-batch-cooking-preferences: backlog
+  9-5-manually-edit-and-replace-meals-in-generated-plan: backlog
+  9-6-adjust-portion-sizes-in-meal-plan: backlog
+  9-7-view-weekly-meal-plan-in-calendar-view: backlog
+  9-8-regenerate-meal-plan-with-different-preferences: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: Smart Shopping List
+  epic-10: backlog
+  10-1-auto-generate-shopping-list-from-meal-plan: backlog
+  10-2-deduct-existing-inventory-from-shopping-list: backlog
+  10-3-manually-add-or-remove-items-from-shopping-list: backlog
+  10-4-check-off-items-as-i-shop: backlog
+  10-5-export-shopping-list-share-print-or-copy: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11: AI Nutrition Coach
+  epic-11: backlog
+  11-1-take-photo-of-meal-for-automatic-nutritional-logging-gemini-vision: backlog
+  11-2-receive-real-time-contextual-nutrition-advice: backlog
+  11-3-interact-with-nutrition-chatbot-for-general-questions: backlog
+  11-4-view-photo-meal-recognition-confidence-and-edit-results: backlog
+  11-5-manage-gemini-api-quota-with-graceful-throttling: backlog
+  11-6-display-nutrition-coach-disclaimer-prominently: backlog
+  epic-11-retrospective: optional
+
+  # Epic 12: Price Comparison & Route Optimization
+  epic-12: backlog
+  12-1-compare-shopping-list-prices-across-4-stores: backlog
+  12-2-view-price-data-source-and-last-update-date: backlog
+  12-3-view-stores-on-interactive-map-with-prices: backlog
+  12-4-calculate-optimized-multi-store-route-savings-vs-distance: backlog
+  12-5-export-optimized-shopping-list-per-store: backlog
+  12-6-view-legal-disclaimer-about-price-accuracy: backlog
+  12-7-handle-missing-price-data-gracefully: backlog
+  12-8-crowdsource-price-data-from-users-phase-1-strategy: backlog
+  epic-12-retrospective: optional
+
+  # Epic 13: Gamification & Engagement
+  epic-13: backlog
+  13-1-unlock-achievements-for-anti-waste-actions: backlog
+  13-2-track-activity-streaks-days-without-waste-days-cooked-at-home: backlog
+  13-3-join-friends-leaderboard-opt-in: backlog
+  13-4-complete-weekly-or-monthly-challenges: backlog
+  13-5-share-achievements-on-social-media: backlog
+  13-6-earn-points-for-actions-and-redeem-rewards-future: backlog
+  epic-13-retrospective: optional
+
+  # Epic 14: Family Sharing & Collaboration
+  epic-14: backlog
+  14-1-share-inventory-with-family-members: backlog
+  14-2-share-recipes-with-other-users: backlog
+  14-3-share-meal-plans-with-family-members: backlog
+  14-4-export-reports-as-pdf-inventory-meal-plan-metrics: backlog
+  14-5-sync-shared-shopping-list-in-real-time: backlog
+  epic-14-retrospective: optional
+
+  # Epic 15: Premium Features & Freemium Management
+  epic-15: backlog
+  15-1-view-clear-comparison-table-of-free-vs-premium-features: backlog
+  15-2-subscribe-to-premium-with-7-day-free-trial: backlog
+  15-3-cancel-premium-subscription-in-3-clicks: backlog
+  15-4-view-transparent-pricing-with-no-hidden-fees: backlog
+  15-5-downgrade-from-premium-to-free-seamlessly: backlog
+  15-6-feature-guards-display-premium-teasers-for-free-users: backlog
+  epic-15-retrospective: optional
+
+  # Epic 16: Compliance & Legal
+  epic-16: backlog
+  16-1-display-nutrition-disclaimer-in-relevant-screens: backlog
+  16-2-display-price-comparison-disclaimer: backlog
+  16-3-display-expiration-alert-disclaimer: backlog
+  16-4-manage-granular-consent-settings-health-data-analytics-marketing: backlog
+  16-5-view-complete-privacy-policy-rgpd-compliant: backlog
+  16-6-view-terms-of-service-and-legal-notices: backlog
+  16-7-export-all-personal-data-for-rgpd-portability: backlog
+  16-8-request-and-confirm-account-deletion-right-to-be-forgotten: backlog
+  epic-16-retrospective: optional

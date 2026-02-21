@@ -1,0 +1,230 @@
+name: Production Deploy (Play Store + App Store)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags (e.g., v1.0.0, v1.2.3)
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  FLUTTER_VERSION: '3.32.6'
+
+jobs:
+  deploy-android:
+    name: Deploy Android to Play Store
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run all tests
+        run: flutter test --coverage
+
+      - name: Decode Android keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_FILE }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/keystore.jks
+
+      - name: Create key.properties
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=keystore.jks
+          EOF
+
+      - name: Build AAB (prod release with obfuscation)
+        run: |
+          flutter build appbundle \
+            --flavor prod \
+            --release \
+            --obfuscate \
+            --split-debug-info=build/symbols/android \
+            --build-name=${{ github.ref_name }} \
+            --build-number=${{ github.run_number }}
+
+      - name: Upload to Play Store (Staged Rollout 5%)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+          packageName: com.frigofute.frigofute_v2
+          releaseFiles: build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          track: production
+          status: completed
+          inAppUpdatePriority: 5
+          userFraction: 0.05  # Start with 5% rollout
+          whatsNewDirectory: fastlane/metadata/android/en-US/changelogs/
+          mappingFile: build/app/outputs/mapping/prodRelease/mapping.txt
+
+      - name: Upload ProGuard mapping to Firebase Crashlytics
+        run: |
+          curl -X POST "https://crashlytics.googleapis.com/v1/projects/${{ secrets.FIREBASE_PROJECT_ID }}/mappingFiles" \
+            -H "Authorization: Bearer ${{ secrets.FIREBASE_TOKEN }}" \
+            -F "mapping_file=@build/app/outputs/mapping/prodRelease/mapping.txt"
+
+      - name: Upload debug symbols to Sentry
+        if: env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli releases new ${{ github.ref_name }}
+          sentry-cli releases files ${{ github.ref_name }} upload-sourcemaps build/symbols/android
+          sentry-cli releases finalize ${{ github.ref_name }}
+          sentry-cli releases deploys ${{ github.ref_name }} new -e production
+
+      - name: Clean up keystore
+        if: always()
+        run: |
+          rm -f android/app/keystore.jks
+          rm -f android/key.properties
+
+  deploy-ios:
+    name: Deploy iOS to App Store
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Run all tests
+        run: flutter test --coverage
+
+      - name: Import certificates
+        env:
+          APPLE_CERTIFICATES_P12: ${{ secrets.APPLE_CERTIFICATES_P12 }}
+          APPLE_CERTIFICATES_PASSWORD: ${{ secrets.APPLE_CERTIFICATES_PASSWORD }}
+        run: |
+          # Create keychain
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings -t 3600 -l build.keychain
+
+          # Import certificate
+          echo "$APPLE_CERTIFICATES_P12" | base64 -d > certificate.p12
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATES_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+
+          rm certificate.p12
+
+      - name: Build IPA (prod release with obfuscation)
+        run: |
+          flutter build ipa \
+            --flavor prod \
+            --release \
+            --obfuscate \
+            --split-debug-info=build/symbols/ios \
+            --build-name=${{ github.ref_name }} \
+            --build-number=${{ github.run_number }} \
+            --export-options-plist=ios/ExportOptionsProd.plist
+
+      - name: Upload to App Store (Phased Release)
+        uses: apple-actions/upload-testflight-build@v1
+        with:
+          app-path: build/ios/ipa/frigofute_v2.ipa
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
+      - name: Upload debug symbols to Sentry
+        if: env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          curl -sL https://sentry.io/get-cli/ | bash
+          sentry-cli releases new ${{ github.ref_name }}
+          sentry-cli releases files ${{ github.ref_name }} upload-sourcemaps build/symbols/ios
+          sentry-cli releases finalize ${{ github.ref_name }}
+          sentry-cli releases deploys ${{ github.ref_name }} new -e production
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain build.keychain || true
+
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [deploy-android, deploy-ios]
+    if: success()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## 🚀 Production Release ${{ github.ref_name }}
+
+            ### Deployed to:
+            - ✅ Google Play Store (5% staged rollout)
+            - ✅ Apple App Store (phased release)
+
+            ### Rollout Plan:
+            - **Phase 1 (Day 0-1):** 5% of users
+            - **Phase 2 (Day 1-2):** 25% of users (manual promotion required)
+            - **Phase 3 (Day 2+):** 100% of users (manual promotion required)
+
+            ### Monitoring:
+            - Monitor crash rate (threshold: < 0.5%)
+            - Monitor ANR rate (threshold: < 1%)
+            - Check Firebase Crashlytics dashboard
+
+            ### To promote to 25%:
+            ```bash
+            gcloud alpha app instances rollout set \
+              --rollout-percentage 25 \
+              --app com.frigofute.frigofute_v2
+            ```
+
+            ### To rollback if needed:
+            See deployment documentation in `/docs/DEPLOYMENT.md`
+
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
