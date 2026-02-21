@@ -1,0 +1,122 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for FrigoFuteV2
+// Story 0.10 Phase 3: Firebase Storage Security Rules
+//
+// Key Features:
+// - User-scoped file storage (users can only access their own files)
+// - Health data protection (meal photos require health_data_consent)
+// - Profile pictures readable by all authenticated users (social features)
+// - File size limits (10MB max per image)
+// - File type validation (images only)
+// - Shared family inventory photos
+//
+// Deployment:
+// firebase deploy --only storage
+//
+// Testing:
+// firebase emulators:start --only storage
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user has health data consent (custom claim)
+    function hasHealthConsent() {
+      return isAuthenticated() && request.auth.token.health_data_consent == true;
+    }
+
+    // Validate file size (10MB max)
+    function isValidImageSize() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB
+    }
+
+    // Validate file type (images only)
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // ============================================================================
+    // USER PROFILE PICTURES
+    // ============================================================================
+    // Readable by all authenticated users (for social features)
+
+    match /users/{userId}/profile_picture {
+      // Read: All authenticated users can view profile pictures
+      allow read: if isAuthenticated();
+
+      // Write: Only the owner can upload/update their profile picture
+      allow write: if isOwner(userId)
+                   && isValidImageType()
+                   && isValidImageSize();
+    }
+
+    // ============================================================================
+    // USER MEAL PHOTOS - Health Data (RGPD Article 9)
+    // ============================================================================
+    // Story 0.10: Requires health_data_consent custom claim
+
+    match /users/{userId}/meal_photos/{photoId} {
+      // Read: Only the owner can read
+      allow read: if isOwner(userId) && hasHealthConsent();
+
+      // Write: Only the owner with health consent
+      allow write: if isOwner(userId)
+                   && hasHealthConsent()
+                   && isValidImageType()
+                   && isValidImageSize();
+    }
+
+    // ============================================================================
+    // RECEIPT PHOTOS - OCR Scanning
+    // ============================================================================
+
+    match /users/{userId}/receipts/{receiptId} {
+      // Read: Only the owner can read
+      allow read: if isOwner(userId);
+
+      // Write: Only the owner can upload receipts
+      allow write: if isOwner(userId)
+                   && isValidImageType()
+                   && isValidImageSize();
+    }
+
+    // ============================================================================
+    // SHARED FAMILY INVENTORY PHOTOS
+    // ============================================================================
+    // Story 0.10: Multi-user shared photos for family/colocation mode
+
+    match /shared_inventories/{sharedId}/photos/{photoId} {
+      // Read: User must be a member of the shared inventory
+      // Note: We can't call Firestore from Storage rules, so we trust client-side checks
+      // Server-side validation happens in Cloud Functions when uploading
+      allow read: if isAuthenticated();
+
+      // Write: Any authenticated user (validated by Cloud Functions)
+      allow write: if isAuthenticated()
+                   && isValidImageType()
+                   && isValidImageSize();
+    }
+
+    // ============================================================================
+    // DENY ALL OTHER PATHS
+    // ============================================================================
+    // Fail-secure - deny access to any undeclared paths
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

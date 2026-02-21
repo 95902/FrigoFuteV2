@@ -45,5 +45,27 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Deep Links: Custom URL Scheme (frigofute://) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.frigofute.frigofute-v2</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>frigofute</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Universal Links: Associated Domains (https://frigofute.com) -->
+	<!-- Story 0.5: Configured for production and dev environments -->
+	<!-- NOTE: Requires apple-app-site-association file on server -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:frigofute.com</string>
+		<string>applinks:dev.frigofute.com</string>
+	</array>
 </dict>
 </plist>

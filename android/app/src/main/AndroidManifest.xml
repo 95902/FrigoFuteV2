@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="frigofute_v2"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -23,6 +23,30 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- Deep Links: Custom URL Scheme (frigofute://) -->
+            <!-- Story 0.5: Configured for all main features -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Support all routes with frigofute:// scheme -->
+                <data android:scheme="frigofute" />
+            </intent-filter>
+
+            <!-- App Links: HTTPS URLs (frigofute.com) -->
+            <!-- Story 0.5: Universal Links configuration -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="frigofute.com" />
+                <data
+                    android:scheme="https"
+                    android:host="dev.frigofute.com" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

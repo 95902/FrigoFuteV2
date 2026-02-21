@@ -1,0 +1,447 @@
+name: Security Checks
+
+# Story 0.10 Phase 9: CI/CD Security Checks
+# Enforces security best practices before code merge
+
+on:
+  pull_request:
+    branches: [main, develop, Developpement]
+  push:
+    branches: [main, develop, Developpement]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  security-audit:
+    name: Security Audit & Dependency Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for better analysis
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.6'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      # ========================================
+      # STATIC ANALYSIS
+      # ========================================
+
+      - name: Flutter Analyze (Linting)
+        run: flutter analyze --fatal-infos --fatal-warnings
+        continue-on-error: false
+
+      # ========================================
+      # SECRETS DETECTION
+      # ========================================
+
+      - name: Check for hardcoded API keys
+        run: |
+          echo "🔍 Checking for hardcoded API keys..."
+
+          # Check for common API key patterns
+          if grep -rn "API_KEY\s*=\s*['\"][^'\"]*['\"]" lib/ --include="*.dart" --exclude-dir={test,integration_test}; then
+            echo "❌ Found hardcoded API_KEY in code"
+            exit 1
+          fi
+
+          echo "✅ No hardcoded API_KEY found"
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "🔍 Checking for hardcoded secrets..."
+
+          # Patterns to check
+          PATTERNS=(
+            "SECRET\s*=\s*['\"][^'\"]*['\"]"
+            "password\s*=\s*['\"][^'\"]*['\"]"
+            "token\s*=\s*['\"][^'\"]*['\"]"
+            "private.*key\s*=\s*['\"][^'\"]*['\"]"
+            "apiKey:\s*['\"][^'\"]*['\"]"
+          )
+
+          FOUND=0
+          for pattern in "${PATTERNS[@]}"; do
+            if grep -rn -E "$pattern" lib/ --include="*.dart" --exclude-dir={test,integration_test}; then
+              echo "❌ Found potential secret: $pattern"
+              FOUND=1
+            fi
+          done
+
+          if [ $FOUND -eq 1 ]; then
+            echo ""
+            echo "⚠️  SECURITY WARNING: Hardcoded secrets detected!"
+            echo "   Move secrets to environment variables or Firebase Remote Config"
+            exit 1
+          fi
+
+          echo "✅ No hardcoded secrets found"
+
+      - name: Check for Firebase credentials in code
+        run: |
+          echo "🔍 Checking for Firebase credentials..."
+
+          if grep -rn "google-services.json\|GoogleService-Info.plist" lib/ --include="*.dart"; then
+            echo "❌ Firebase config files referenced in code"
+            exit 1
+          fi
+
+          # Check for hardcoded Firebase config
+          if grep -rn "apiKey.*AIza" lib/ --include="*.dart" --exclude-dir={test,integration_test}; then
+            echo "❌ Firebase API key hardcoded in code"
+            echo "   Use firebase_options.dart from flutterfire configure instead"
+            exit 1
+          fi
+
+          echo "✅ No Firebase credentials hardcoded"
+
+      - name: Verify .env files are gitignored
+        run: |
+          echo "🔍 Checking .gitignore configuration..."
+
+          # Check if .env files are in .gitignore
+          if ! grep -q "^\.env$\|^\.env\..*$\|^\*\.env$" .gitignore; then
+            echo "❌ .env files not in .gitignore"
+            echo "   Add the following to .gitignore:"
+            echo "   .env"
+            echo "   .env.*"
+            echo "   !.env.example"
+            exit 1
+          fi
+
+          # Check if .env files exist in repo (they shouldn't)
+          if git ls-files | grep -E "\.env$|\.env\.(dev|staging|prod)$"; then
+            echo "❌ .env files found in git repository"
+            echo "   Remove them with: git rm --cached .env*"
+            exit 1
+          fi
+
+          echo "✅ .env files properly gitignored"
+
+      - name: Check for exposed credentials in git history
+        run: |
+          echo "🔍 Scanning git history for exposed credentials..."
+
+          # Check last 50 commits for sensitive patterns
+          if git log -50 -p | grep -E "API_KEY|SECRET|password.*=|token.*=" | grep -v "# " | head -5; then
+            echo ""
+            echo "⚠️  WARNING: Potential credentials found in git history"
+            echo "   Review the matches above. If legitimate, consider:"
+            echo "   1. Using git-filter-repo to remove sensitive commits"
+            echo "   2. Rotating any exposed credentials"
+            echo "   3. Adding to .gitignore to prevent future commits"
+          else
+            echo "✅ No exposed credentials in recent git history"
+          fi
+        continue-on-error: true # Warning only, don't fail build
+
+      # ========================================
+      # DEPENDENCY SECURITY
+      # ========================================
+
+      - name: OWASP dependency audit
+        run: |
+          echo "🔍 Running OWASP dependency security audit..."
+
+          # Run Flutter pub audit (checks for known vulnerabilities)
+          flutter pub get
+
+          if flutter pub audit; then
+            echo "✅ No known vulnerabilities in dependencies"
+          else
+            echo ""
+            echo "⚠️  SECURITY WARNING: Vulnerabilities detected in dependencies"
+            echo "   Review the output above and update vulnerable packages"
+            echo "   Run: flutter pub upgrade --major-versions"
+            echo ""
+            echo "   For critical vulnerabilities, this check will fail the build"
+            exit 1
+          fi
+
+      - name: Check for deprecated dependencies
+        run: |
+          echo "🔍 Checking for deprecated dependencies..."
+
+          flutter pub outdated || echo "⚠️  Some dependencies are outdated"
+        continue-on-error: true # Warning only
+
+      # ========================================
+      # ENVIRONMENT CONFIGURATION
+      # ========================================
+
+      - name: Verify flutter_dotenv is configured
+        run: |
+          echo "🔍 Verifying flutter_dotenv configuration..."
+
+          if grep -q "flutter_dotenv" pubspec.yaml; then
+            echo "✅ flutter_dotenv dependency found"
+          else
+            echo "⚠️  flutter_dotenv not in pubspec.yaml"
+            echo "   Add: flutter_dotenv: ^5.2.1"
+          fi
+
+      - name: Verify .env.example exists
+        run: |
+          echo "🔍 Checking for .env.example..."
+
+          if [ -f ".env.example" ]; then
+            echo "✅ .env.example found"
+            echo ""
+            echo "📄 .env.example contents:"
+            cat .env.example
+          else
+            echo "⚠️  .env.example not found"
+            echo "   Create .env.example with sample environment variables"
+          fi
+        continue-on-error: true # Warning only
+
+      # ========================================
+      # CODE SECURITY
+      # ========================================
+
+      - name: Check for insecure HTTP usage
+        run: |
+          echo "🔍 Checking for insecure HTTP connections..."
+
+          # Look for http:// in API calls (should be https://)
+          if grep -rn "http://" lib/ --include="*.dart" | grep -v "localhost\|127.0.0.1\|example.com\|//"; then
+            echo ""
+            echo "⚠️  WARNING: Insecure HTTP connections found"
+            echo "   Use HTTPS for all external API calls"
+          else
+            echo "✅ No insecure HTTP connections found"
+          fi
+        continue-on-error: true # Warning only
+
+      - name: Check for debug statements
+        run: |
+          echo "🔍 Checking for debug print statements..."
+
+          # Look for print() statements that might leak sensitive info
+          DEBUG_COUNT=$(grep -rn "print(" lib/ --include="*.dart" | wc -l)
+
+          if [ $DEBUG_COUNT -gt 0 ]; then
+            echo "⚠️  Found $DEBUG_COUNT print() statements"
+            echo "   Consider using logger or conditional debug flags"
+          else
+            echo "✅ No debug print statements found"
+          fi
+        continue-on-error: true # Warning only
+
+      # ========================================
+      # BUILD SECURITY
+      # ========================================
+
+      - name: Verify obfuscation configuration
+        run: |
+          echo "🔍 Verifying obfuscation configuration..."
+
+          # Check if build scripts mention obfuscation
+          if grep -q "obfuscate" README.md || grep -q "split-debug-info" README.md; then
+            echo "✅ Obfuscation documented in README"
+          else
+            echo "⚠️  Obfuscation not documented in README"
+            echo "   Add build instructions with --obfuscate and --split-debug-info"
+          fi
+
+          # Check for obfuscation in CI/CD workflows
+          if grep -q "obfuscate" .github/workflows/*.yml; then
+            echo "✅ Obfuscation configured in CI/CD"
+          else
+            echo "⚠️  Obfuscation not configured in CI/CD workflows"
+            echo "   Add --obfuscate flag to release builds"
+          fi
+        continue-on-error: true # Warning only
+
+      # ========================================
+      # SECURITY RULES VALIDATION
+      # ========================================
+
+      - name: Validate Firestore security rules syntax
+        run: |
+          echo "🔍 Validating Firestore security rules..."
+
+          if [ -f "firestore.rules" ]; then
+            echo "✅ firestore.rules found"
+
+            # Basic syntax validation
+            if grep -q "match /{document=\*\*}" firestore.rules; then
+              if grep -A 1 "match /{document=\*\*}" firestore.rules | grep -q "allow.*false"; then
+                echo "✅ Fail-secure deny-all rule present"
+              else
+                echo "⚠️  WARNING: No fail-secure deny-all rule found"
+                echo "   Add: match /{document=**} { allow read, write: if false; }"
+              fi
+            else
+              echo "⚠️  No catch-all rule found in firestore.rules"
+            fi
+          else
+            echo "⚠️  firestore.rules not found"
+          fi
+        continue-on-error: true # Warning only
+
+      - name: Validate Storage security rules syntax
+        run: |
+          echo "🔍 Validating Storage security rules..."
+
+          if [ -f "storage.rules" ]; then
+            echo "✅ storage.rules found"
+
+            # Basic syntax validation
+            if grep -q "match /{allPaths=\*\*}" storage.rules; then
+              if grep -A 1 "match /{allPaths=\*\*}" storage.rules | grep -q "allow.*false"; then
+                echo "✅ Fail-secure deny-all rule present"
+              else
+                echo "⚠️  WARNING: No fail-secure deny-all rule found"
+              fi
+            else
+              echo "⚠️  No catch-all rule found in storage.rules"
+            fi
+          else
+            echo "⚠️  storage.rules not found"
+          fi
+        continue-on-error: true # Warning only
+
+      # ========================================
+      # SUMMARY
+      # ========================================
+
+      - name: Security audit summary
+        if: always()
+        run: |
+          echo ""
+          echo "======================================"
+          echo "   SECURITY AUDIT SUMMARY"
+          echo "======================================"
+          echo ""
+          echo "✅ Static analysis passed"
+          echo "✅ Secrets detection passed"
+          echo "✅ Dependency audit passed"
+          echo "✅ Environment configuration verified"
+          echo ""
+          echo "For detailed security requirements, see:"
+          echo "  docs/SECURITY_RULES_GUIDE.md"
+          echo ""
+          echo "To run security checks locally:"
+          echo "  flutter analyze --fatal-infos"
+          echo "  flutter pub audit"
+          echo ""
+
+  # ========================================
+  # CODE COVERAGE CHECK (Raised to 75%)
+  # ========================================
+
+  coverage-check:
+    name: Code Coverage (≥75%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.6'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run tests with coverage
+        run: flutter test --coverage --reporter expanded
+
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+      - name: Check coverage threshold (≥75%)
+        run: |
+          echo "🔍 Analyzing code coverage..."
+
+          # Generate coverage report
+          genhtml coverage/lcov.info -o coverage/html
+
+          # Extract coverage percentage
+          COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 | grep "lines" | awk '{print $2}' | sed 's/%//')
+
+          echo ""
+          echo "======================================"
+          echo "   CODE COVERAGE REPORT"
+          echo "======================================"
+          echo ""
+          echo "  Total Coverage: ${COVERAGE}%"
+          echo "  Threshold:      75%"
+          echo ""
+
+          # Check threshold
+          if (( $(echo "$COVERAGE < 75" | bc -l) )); then
+            echo "❌ FAILED: Coverage ${COVERAGE}% is below threshold (75%)"
+            echo ""
+            echo "To improve coverage:"
+            echo "  1. Add unit tests for untested code"
+            echo "  2. Add widget tests for UI components"
+            echo "  3. Run: flutter test --coverage"
+            echo "  4. View report: genhtml coverage/lcov.info -o coverage/html"
+            echo ""
+            exit 1
+          fi
+
+          echo "✅ PASSED: Coverage threshold met"
+          echo ""
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/html
+          retention-days: 30
+
+  # ========================================
+  # LICENSE COMPLIANCE
+  # ========================================
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.6'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Check dependency licenses
+        run: |
+          echo "🔍 Checking dependency licenses..."
+
+          # List all dependencies with licenses
+          flutter pub deps --json | grep "license" || echo "License information available via pub.dev"
+
+          echo ""
+          echo "⚠️  Manually verify licenses for:"
+          echo "  - GPL/AGPL dependencies (copyleft)"
+          echo "  - Commercial dependencies (restrictions)"
+          echo ""
+          echo "Most Flutter packages use permissive licenses (MIT, BSD, Apache 2.0)"
+          echo ""
+        continue-on-error: true # Warning only

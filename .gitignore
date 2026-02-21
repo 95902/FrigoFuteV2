@@ -55,8 +55,19 @@ app.*.map.json
 
 # Firebase configuration files (contains project-specific credentials)
 android/app/google-services.json
+android/app/src/dev/google-services.json
+android/app/src/staging/google-services.json
+android/app/src/prod/google-services.json
 ios/Runner/GoogleService-Info.plist
+ios/Runner/GoogleService-Info-dev.plist
+ios/Runner/GoogleService-Info-staging.plist
+ios/Runner/GoogleService-Info-prod.plist
 
 # Generated files
 *.g.dart
 *.freezed.dart
+
+# Firebase Options (contains API keys - debatable but safer to exclude)
+# Note: Google says these are safe to commit for mobile apps, but we exclude them
+# and use --dart-define in CI/CD for better security practices
+lib/firebase_options*.dart

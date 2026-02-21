@@ -1,6 +1,6 @@
 # Story 0.1: Initialize Flutter Project with Feature-First Structure
 
-Status: review
+Status: done
 
 ## Story
 
@@ -449,11 +449,39 @@ N/A - Première story du projet
 
 ⚠️ **Note iOS**: Compilation iOS non testée (Windows). À valider sur macOS.
 
+---
+
+**Story 0.1 - Code Review Fixes - 2026-02-14**
+
+🔥 **Revue adversariale complétée** - 11 problèmes HIGH/MEDIUM corrigés
+
+✅ **Corrections CRITIQUES appliquées:**
+1. **Architecture documentée** - Ajouté README.md dans lib/core/, lib/features/, test/ pour expliquer la structure
+2. **main.dart complètement réécrit** - Intégration Riverpod (ProviderScope), dotenv loading, Material 3 theme, placeholder screen professionnel
+3. **Assets créés** - Structure assets/{images,fonts,translations}/ avec .gitkeep pour tracking git
+4. **SÉCURITÉ FIX** - Retiré .env.* des assets pubspec.yaml (vulnérabilité critique)
+5. **Tests améliorés** - Réécrit widget_test.dart avec 3 vrais tests (app init, placeholder, Material 3)
+
+✅ **Corrections MOYENNES appliquées:**
+6. **Package ajouté** - dio_smart_retry pour retry automatique (remplace dio_retry_interceptor)
+7. **pubspec.yaml customisé** - Description professionnelle "FrigoFute V2 - Anti-gaspillage alimentaire intelligent"
+8. **Configuration Riverpod** - ProviderScope wrapping MaterialApp dans main.dart
+9. **Dotenv configuré** - Loading .env.dev au démarrage
+10. **Material 3 activé** - Theme avec seed color green (#4CAF50), support dark mode
+11. **Code nettoyé** - Supprimé imports inutilisés, corrigé deprecated APIs (withOpacity → withValues)
+
+✅ **Validation finale:**
+- flutter analyze: **No issues found!** ✅
+- flutter test: **All tests passed! (3/3)** ✅
+- Architecture documentée et fonctionnelle
+- Sécurité: .env non exposés dans build
+- Prêt pour Story 0.2 (Firebase config)
+
 ### File List
 
 **Configuration:**
-- pubspec.yaml (99 dépendances)
-- analysis_options.yaml
+- pubspec.yaml (customisé: description, dio_smart_retry ajouté, .env retirés des assets)
+- analysis_options.yaml (linting strict)
 - .gitignore
 - .env.example
 - .env.dev
@@ -461,23 +489,29 @@ N/A - Première story du projet
 - .env.prod
 
 **Android:**
-- android/app/build.gradle.kts (modifié: minSdk 23, NDK 27.0.12077973)
+- android/app/build.gradle.kts (minSdk 23, NDK 27.0.12077973)
 
-**Structure lib/:**
-- lib/main.dart (corrigé: paramètres requis avant optionnels)
-- lib/core/{auth,data_sync,networking,storage,feature_flags,monitoring,compliance,routing,theme}/
-- lib/core/shared/{utils,extensions,constants,exceptions,widgets/{atoms,molecules,organisms}}/
-- lib/features/{inventory,ocr_scan,notifications,dashboard,auth_profile,recipes,nutrition_tracking,nutrition_profiles,meal_planning,ai_coach,gamification,shopping_list,family_sharing,price_comparator}/
-  - Chaque feature: domain/{entities,repositories,usecases}, data/{models,datasources,repositories}, presentation/{providers,screens,widgets}
+**Application:**
+- lib/main.dart (✅ Réécrit: Riverpod ProviderScope, dotenv, Material 3, placeholder screen)
+- lib/core/README.md (documentation architecture core)
+- lib/features/README.md (documentation 14 modules)
+- lib/features/inventory/README.md (exemple module)
+- lib/features/auth_profile/README.md (exemple module)
+- lib/core/{auth,data_sync,networking,storage,feature_flags,monitoring,compliance,routing,theme}/ (dossiers)
+- lib/core/shared/{utils,extensions,constants,exceptions,widgets/{atoms,molecules,organisms}}/ (dossiers)
+- lib/features/{inventory,ocr_scan,notifications,dashboard,auth_profile,recipes,nutrition_tracking,nutrition_profiles,meal_planning,ai_coach,gamification,shopping_list,family_sharing,price_comparator}/ (dossiers avec structure domain/data/presentation)
 
-**Structure test/:**
-- test/{core,features,integration_test,test_helpers}/
-- test/widget_test.dart (existant, 1 test passing)
+**Tests:**
+- test/README.md (documentation stratégie de tests)
+- test/widget_test.dart (✅ Réécrit: 3 tests - app init, placeholder, Material 3)
+- test/{core,features,integration_test,test_helpers}/ (dossiers)
 
-**Structure assets/:**
-- assets/images/{onboarding,icons,illustrations}/
-- assets/fonts/
-- assets/translations/
+**Assets:**
+- assets/images/onboarding/.gitkeep
+- assets/images/icons/.gitkeep
+- assets/images/illustrations/.gitkeep
+- assets/fonts/.gitkeep
+- assets/translations/.gitkeep
 
 ---
 

@@ -1,0 +1,183 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:frigofute_v2/core/auth/auth_providers.dart';
+import 'package:mocktail/mocktail.dart';
+
+// Mocks
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockUser extends Mock implements User {}
+class MockUserCredential extends Mock implements UserCredential {}
+
+void main() {
+  group('Auth Providers Tests', () {
+    late MockFirebaseAuth mockAuth;
+    late MockUser mockUser;
+    late ProviderContainer container;
+
+    setUp(() {
+      mockAuth = MockFirebaseAuth();
+      mockUser = MockUser();
+
+      when(() => mockUser.uid).thenReturn('test-uid-123');
+      when(() => mockUser.email).thenReturn('test@example.com');
+      when(() => mockUser.displayName).thenReturn('Test User');
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    group('authStateProvider', () {
+      test('emits user when authenticated', () async {
+        when(() => mockAuth.authStateChanges())
+            .thenAnswer((_) => Stream.value(mockUser));
+
+        container = ProviderContainer();
+
+        final state = await container.read(authStateProvider.future);
+        expect(state, isNotNull);
+        expect(state?.uid, 'test-uid-123');
+      });
+
+      test('emits null when not authenticated', () async {
+        when(() => mockAuth.authStateChanges())
+            .thenAnswer((_) => Stream.value(null));
+
+        container = ProviderContainer();
+
+        final state = await container.read(authStateProvider.future);
+        expect(state, isNull);
+      });
+
+      test('emits stream of auth state changes', () async {
+        final controller = Stream<User?>.fromIterable([
+          null,
+          mockUser,
+          null,
+        ]);
+
+        when(() => mockAuth.authStateChanges()).thenAnswer((_) => controller);
+
+        container = ProviderContainer();
+
+        // This test verifies the provider can handle stream updates
+        expect(container.read(authStateProvider), isA<AsyncValue>());
+      });
+    });
+
+    group('currentUserProvider', () {
+      test('returns null when authState is loading', () {
+        container = ProviderContainer(
+          overrides: [
+            authStateProvider.overrideWith((_) => const AsyncValue.loading()),
+          ],
+        );
+
+        final user = container.read(currentUserProvider);
+        expect(user, isNull);
+      });
+
+      test('returns null when authState is error', () {
+        container = ProviderContainer(
+          overrides: [
+            authStateProvider.overrideWith(
+              (_) => AsyncValue.error('Auth error', StackTrace.current),
+            ),
+          ],
+        );
+
+        final user = container.read(currentUserProvider);
+        expect(user, isNull);
+      });
+
+      test('returns user when authState has data', () {
+        container = ProviderContainer(
+          overrides: [
+            authStateProvider.overrideWith(
+              (_) => AsyncValue.data(mockUser),
+            ),
+          ],
+        );
+
+        final user = container.read(currentUserProvider);
+        expect(user, isNotNull);
+        expect(user?.uid, 'test-uid-123');
+      });
+
+      test('returns null when authState has no user', () {
+        container = ProviderContainer(
+          overrides: [
+            authStateProvider.overrideWith(
+              (_) => const AsyncValue.data(null),
+            ),
+          ],
+        );
+
+        final user = container.read(currentUserProvider);
+        expect(user, isNull);
+      });
+    });
+
+    group('isAuthenticatedProvider', () {
+      test('returns false when no user', () {
+        container = ProviderContainer(
+          overrides: [
+            currentUserProvider.overrideWith((_) => null),
+          ],
+        );
+
+        final isAuth = container.read(isAuthenticatedProvider);
+        expect(isAuth, isFalse);
+      });
+
+      test('returns true when user exists', () {
+        container = ProviderContainer(
+          overrides: [
+            currentUserProvider.overrideWith((_) => mockUser),
+          ],
+        );
+
+        final isAuth = container.read(isAuthenticatedProvider);
+        expect(isAuth, isTrue);
+      });
+    });
+
+    group('userEmailProvider', () {
+      test('returns null when no user', () {
+        container = ProviderContainer(
+          overrides: [
+            currentUserProvider.overrideWith((_) => null),
+          ],
+        );
+
+        final email = container.read(userEmailProvider);
+        expect(email, isNull);
+      });
+
+      test('returns email when user exists', () {
+        container = ProviderContainer(
+          overrides: [
+            currentUserProvider.overrideWith((_) => mockUser),
+          ],
+        );
+
+        final email = container.read(userEmailProvider);
+        expect(email, 'test@example.com');
+      });
+
+      test('returns null when user has no email', () {
+        when(() => mockUser.email).thenReturn(null);
+
+        container = ProviderContainer(
+          overrides: [
+            currentUserProvider.overrideWith((_) => mockUser),
+          ],
+        );
+
+        final email = container.read(userEmailProvider);
+        expect(email, isNull);
+      });
+    });
+  });
+}

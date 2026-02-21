@@ -1,0 +1,119 @@
+# Fastfile for Android - FrigoFuteV2
+# Story 0.6: CI/CD Pipeline with Quality Gates
+
+default_platform(:android)
+
+platform :android do
+  desc "Deploy a new version to the Google Play Store (Internal Track)"
+  lane :internal do
+    gradle(
+      task: "bundle",
+      flavor: "prod",
+      build_type: "Release",
+      properties: {
+        "android.injected.signing.store.file" => ENV["ANDROID_KEYSTORE_PATH"],
+        "android.injected.signing.store.password" => ENV["ANDROID_STORE_PASSWORD"],
+        "android.injected.signing.key.alias" => ENV["ANDROID_KEY_ALIAS"],
+        "android.injected.signing.key.password" => ENV["ANDROID_KEY_PASSWORD"],
+      }
+    )
+
+    upload_to_play_store(
+      track: 'internal',
+      aab: lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH],
+      json_key_data: ENV["ANDROID_SERVICE_ACCOUNT"],
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Promote Internal to Beta"
+  lane :promote_to_beta do
+    upload_to_play_store(
+      track: 'internal',
+      track_promote_to: 'beta',
+      json_key_data: ENV["ANDROID_SERVICE_ACCOUNT"],
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Deploy to Production with Staged Rollout"
+  lane :production do |options|
+    # Default to 5% rollout if not specified
+    rollout_percentage = options[:rollout] || 0.05
+
+    gradle(
+      task: "bundle",
+      flavor: "prod",
+      build_type: "Release",
+      properties: {
+        "android.injected.signing.store.file" => ENV["ANDROID_KEYSTORE_PATH"],
+        "android.injected.signing.store.password" => ENV["ANDROID_STORE_PASSWORD"],
+        "android.injected.signing.key.alias" => ENV["ANDROID_KEY_ALIAS"],
+        "android.injected.signing.key.password" => ENV["ANDROID_KEY_PASSWORD"],
+      }
+    )
+
+    upload_to_play_store(
+      track: 'production',
+      rollout: rollout_percentage.to_s,
+      aab: lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH],
+      json_key_data: ENV["ANDROID_SERVICE_ACCOUNT"],
+      skip_upload_apk: true,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false
+    )
+
+    # Send notification
+    slack(
+      message: "🚀 Android Production Deploy: #{rollout_percentage * 100}% rollout",
+      success: true,
+      default_payloads: [:git_branch, :git_author]
+    ) if ENV["SLACK_URL"]
+  end
+
+  desc "Increase Production Rollout"
+  lane :increase_rollout do |options|
+    new_percentage = options[:to] || 0.25
+
+    upload_to_play_store(
+      track: 'production',
+      rollout: new_percentage.to_s,
+      json_key_data: ENV["ANDROID_SERVICE_ACCOUNT"],
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+
+    slack(
+      message: "📈 Android Rollout increased to #{new_percentage * 100}%",
+      success: true
+    ) if ENV["SLACK_URL"]
+  end
+
+  desc "Deploy to Firebase App Distribution (Staging)"
+  lane :firebase_staging do
+    gradle(
+      task: "assemble",
+      flavor: "staging",
+      build_type: "Release"
+    )
+
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID_ANDROID"],
+      groups: "beta-testers",
+      release_notes: "Staging build from develop branch",
+      apk_path: lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH],
+      firebase_cli_token: ENV["FIREBASE_TOKEN"]
+    )
+  end
+end

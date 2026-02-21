@@ -1,0 +1,127 @@
+# Fastfile for iOS - FrigoFuteV2
+# Story 0.6: CI/CD Pipeline with Quality Gates
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Push a new beta build to TestFlight"
+  lane :beta do
+    # Sync certificates and profiles
+    match(
+      type: "appstore",
+      readonly: true,
+      git_url: ENV["MATCH_GIT_URL"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTH"]
+    )
+
+    # Build the app
+    build_app(
+      scheme: "Runner (prod)",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.frigofute.frigofute-v2" => "match AppStore com.frigofute.frigofute-v2"
+        }
+      }
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      api_key_path: ENV["APP_STORE_CONNECT_API_KEY_PATH"],
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      groups: ["Internal Testers"]
+    )
+  end
+
+  desc "Deploy to App Store with Phased Release"
+  lane :release do |options|
+    # Default to phased release (7 days)
+    phased_release = options[:phased_release] != false
+
+    # Sync certificates
+    match(
+      type: "appstore",
+      readonly: true,
+      git_url: ENV["MATCH_GIT_URL"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTH"]
+    )
+
+    # Increment build number
+    increment_build_number(
+      xcodeproj: "Runner.xcodeproj"
+    )
+
+    # Build
+    build_app(
+      scheme: "Runner (prod)",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.frigofute.frigofute-v2" => "match AppStore com.frigofute.frigofute-v2"
+        }
+      }
+    )
+
+    # Upload to App Store
+    upload_to_app_store(
+      api_key_path: ENV["APP_STORE_CONNECT_API_KEY_PATH"],
+      submit_for_review: false,
+      automatic_release: false,
+      phased_release: phased_release,
+      skip_metadata: false,
+      skip_screenshots: false,
+      precheck_include_in_app_purchases: false
+    )
+
+    # Send notification
+    slack(
+      message: "🚀 iOS Production Deploy submitted (Phased: #{phased_release})",
+      success: true,
+      default_payloads: [:git_branch, :git_author]
+    ) if ENV["SLACK_URL"]
+  end
+
+  desc "Deploy to Firebase App Distribution (Staging)"
+  lane :firebase_staging do
+    # Build staging
+    build_app(
+      scheme: "Runner (staging)",
+      export_method: "ad-hoc",
+      export_options: "ExportOptionsStaging.plist"
+    )
+
+    # Upload to Firebase
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID_IOS"],
+      groups: "beta-testers",
+      release_notes: "Staging build from develop branch",
+      ipa_path: lane_context[SharedValues::IPA_OUTPUT_PATH],
+      firebase_cli_token: ENV["FIREBASE_TOKEN"]
+    )
+  end
+
+  desc "Sync certificates and profiles"
+  lane :sync_certificates do
+    match(
+      type: "development",
+      readonly: false,
+      git_url: ENV["MATCH_GIT_URL"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTH"]
+    )
+
+    match(
+      type: "adhoc",
+      readonly: false,
+      git_url: ENV["MATCH_GIT_URL"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTH"]
+    )
+
+    match(
+      type: "appstore",
+      readonly: false,
+      git_url: ENV["MATCH_GIT_URL"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTH"]
+    )
+  end
+end
